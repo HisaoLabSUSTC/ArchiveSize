@@ -8,6 +8,7 @@ classdef ArchiveStrategy < handle
         K % size of archive
         T % update interval
         cnt % number of solutions in the archive
+        preCnt % number of examined solutions in the archive
         name % name of the strategy
         dataName % name of the sequence
         runid % run of the sequence
@@ -16,6 +17,12 @@ classdef ArchiveStrategy < handle
         % for the offspring, and negative for the population
         arcIndex = [];
         archive = [];
+        % Removal methods have two options: "List" means using a linear  
+        % list and "ENS" means using T-ENS method.
+        removalMethod = "List"; 
+        % Truncation methods have two options: "DSS" means using greedy 
+        % distance-based inclusion and "CDR" means using greedy crowding
+        % distance-based removal.
         truncationMethod = 'DSS';
         folder = "";
     end
@@ -51,6 +58,7 @@ classdef ArchiveStrategy < handle
                 memory = obj.K+obj.T*N;
                 obj.archive = zeros(memory, M);
                 obj.cnt=0;
+                obj.preCnt=0;
                 % A_1=P_1
                 obj.archive(1:N,:)=seq(1).population;
                 obj.cnt=N;
@@ -64,7 +72,7 @@ classdef ArchiveStrategy < handle
                 for g=2:gen
                     % A_g=A_g-1+O_g-1
                     O = seq(g-1).offspring;
-                    n = size(O, 1); % n maybe smaller than N(e.g., n=90 and N = 91)
+                    n = size(O, 1); % n maybe smaller than N (e.g., n=90 and N = 91)
                     obj.archive(obj.cnt+1: obj.cnt+n,:) = O;
                     obj.cnt = obj.cnt + n;
                     obj.arcIndex = [obj.arcIndex, solIndex+1:solIndex+n];
@@ -105,6 +113,7 @@ classdef ArchiveStrategy < handle
                 % pre-allocate memory
                 obj.archive = zeros(memory,M);
                 obj.cnt=0;
+                obj.preCnt=0;
                 solIndex_O=0;
                 solIndex_P=0;
                 for g=1:gen-X
@@ -153,27 +162,75 @@ classdef ArchiveStrategy < handle
         end
 
         function time = removeD(obj) 
-             arc = obj.archive(1:obj.cnt, :);
-             tic;
-             [FrontNo,~] = NDSort(arc, 1);
-             arc = arc(FrontNo==1,:);
-             time = toc;
-             obj.cnt = size(arc,1);
-             obj.archive(1:obj.cnt,:) = arc;
-             obj.arcIndex = obj.arcIndex(FrontNo==1); 
+
+             if obj.removalMethod == "ENS"
+                 arc = obj.archive(1:obj.cnt, :);
+                 st=tic;
+                 [FrontNo,~] = NDSort(arc, 1);   
+                 arc = arc(FrontNo==1,:);
+                 time = toc(st);
+                 obj.cnt = size(arc,1);
+                 obj.preCnt = obj.cnt;
+                 obj.archive(1:obj.cnt,:) = arc;
+                 obj.arcIndex = obj.arcIndex(FrontNo==1); 
+             elseif obj.removalMethod == "List"
+                % only nondominated solutions in S are added to A
+                A = obj.archive(1:obj.preCnt, :);
+                Aindex = obj.arcIndex(1:obj.preCnt);
+                S = obj.archive(obj.preCnt+1:obj.cnt,:);
+                Sindex = obj.arcIndex(obj.preCnt+1:obj.cnt);
+
+                st=tic;
+                [FrontNo, ~]  = NDSort(S,1);
+                S = S(FrontNo==1,:);
+                Sindex = Sindex(FrontNo==1);
+                p = size(S,1);
+                k = obj.preCnt;
+
+                if k>0 && p>0
+                    IA = true(1,k);
+                    IS = true(1,p);
+                    for i=1:p
+                        value = A-repmat(S(i,:), k, 1);
+                        % remove dominated solutions in the archive
+                        IA(all(value>=0, 2) & (~all(value==0, 2)))=false;
+                        % remove the dominated solution in S
+                        if any(all(value<=0, 2),1)
+                            IS(i)=false;
+                        end
+                    end
+                    S = S(IS,:);
+                    Sindex = Sindex(IS);
+                    A = A(IA, :);
+                    Aindex = Aindex(IA);
+                end
+                time = toc(st);
+                
+                p = size(S,1);
+                k = size(A,1);
+                obj.cnt = k + p;
+                obj.preCnt = obj.cnt;
+                obj.archive(1:k+p,:)=[A;S];
+                obj.arcIndex=[Aindex,Sindex];
+             else
+                 error('removal method is not implemented.')
+             end
         end
 
         function time = truncate(obj)
              arc= obj.archive(1:obj.cnt,:);
-             tic;
+             st = tic;
              if strcmp(obj.truncationMethod, 'DSS')
-                  [~,index] = DSS(obj.normalize(arc, arc), obj.K);
+                 [~,index] = DSS(obj.normalize(arc, arc), obj.K);
+             elseif strcmp(obj.truncationMethod, 'CDR')
+                 index = CDR(obj.normalize(arc, arc), obj.K);
              else
                  error('truncation method is not implemented.')
              end
              arc=arc(index,:);
-             time = toc;
+             time = toc(st);
              obj.cnt=size(arc,1);
+             obj.preCnt = obj.cnt;
              obj.archive(1:obj.cnt,:) = arc;
              obj.arcIndex = obj.arcIndex(index); 
         end
