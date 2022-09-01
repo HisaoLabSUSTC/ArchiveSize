@@ -7,7 +7,11 @@ Here the explanation of the important files are listed:
 
 **LazyHVSelection.m**: lazy greedy inclusion hypervolume subset selection (LGI-HSS)
 
-**DSS.m**: distance-based subset selection
+**DSS.m**: greedy distance-based inclusion
+
+**CDR.m**: greedy crowding distance-based removal
+
+"NDSort.m": T-ENS is used to remove dominated solutions in the archive 
 
 **ArchiveStrategy.m**: contain various archiving strategies mentioned in the paper
 
