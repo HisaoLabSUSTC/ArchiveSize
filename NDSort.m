@@ -54,13 +54,14 @@ function [FrontNo,MaxFNo] = NDSort(varargin)
         Infeasible           = any(PopCon>0,2);
         PopObj(Infeasible,:) = repmat(max(PopObj,[],1),sum(Infeasible),1) + repmat(sum(max(0,PopCon(Infeasible,:)),2),1,M);
     end
-    if M < 3 || N < 500
-        % Use efficient non-dominated sort with sequential search (ENS-SS)
-        [FrontNo,MaxFNo] = ENS_SS(PopObj,nSort);
-    else
-        % Use tree-based efficient non-dominated sort (T-ENS)
-        [FrontNo,MaxFNo] = T_ENS(PopObj,nSort);
-    end
+%     if M < 3 || N < 500
+%         % Use efficient non-dominated sort with sequential search (ENS-SS)
+%         [FrontNo,MaxFNo] = ENS_SS(PopObj,nSort);
+%     else
+%         % Use tree-based efficient non-dominated sort (T-ENS)
+%         [FrontNo,MaxFNo] = T_ENS(PopObj,nSort);
+%     end
+    [FrontNo,MaxFNo] = T_ENS(PopObj,nSort);
 end
 
 function [FrontNo,MaxFNo] = ENS_SS(PopObj,nSort)
