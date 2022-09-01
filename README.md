@@ -11,7 +11,7 @@ Here the explanation of the important files are listed:
 
 **CDR.m**: greedy crowding distance-based removal
 
-"NDSort.m": T-ENS is used to remove dominated solutions in the archive 
+**NDSort.m**: T-ENS is used to remove dominated solutions in the archive 
 
 **ArchiveStrategy.m**: contain various archiving strategies mentioned in the paper
 
